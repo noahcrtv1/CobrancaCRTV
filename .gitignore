@@ -1,0 +1,6 @@
+.env
+data/
+node_modules/
+macos/.build/
+macos/build/
+.DS_Store

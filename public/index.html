@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CobrançaCRTV</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262a33; --fg:#e8eaee; --mut:#8b92a0; --acc:#25d366; --warn:#f5a524; --err:#ef4444; }
+  * { box-sizing:border-box }
+  body { margin:0; font:14px/1.45 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--fg) }
+  header { display:flex; align-items:center; gap:16px; padding:16px 24px; border-bottom:1px solid var(--line) }
+  header h1 { font-size:17px; margin:0; flex:1 }
+  .mac-app header { padding:22px 24px 14px 92px }
+  nav button { background:none; border:0; color:var(--mut); padding:8px 12px; cursor:pointer; font:inherit; border-radius:8px }
+  nav button.on { color:var(--fg); background:var(--card) }
+  main { max-width:1100px; margin:0 auto; padding:24px 16px }
+  section { display:none } section.on { display:block }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px }
+  table { width:100%; border-collapse:collapse } th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line) }
+  th { color:var(--mut); font-weight:500; font-size:12px }
+  input,select,textarea { background:#0b0d11; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:8px 10px; font:inherit; width:100% }
+  textarea { min-height:180px }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; align-items:end }
+  .btn { background:var(--acc); color:#04150a; border:0; border-radius:8px; padding:8px 14px; font-weight:600; cursor:pointer; font:inherit; white-space:nowrap }
+  .btn.ghost { background:none; color:var(--fg); border:1px solid var(--line) }
+  .btn.sm { padding:4px 9px; font-size:12px }
+  .pill { display:inline-block; padding:2px 8px; border-radius:99px; font-size:12px; background:var(--line) }
+  .pill.ok { background:#123d24; color:var(--acc) } .pill.warn { background:#3d2e10; color:var(--warn) } .pill.err { background:#3d1414; color:var(--err) }
+  .row { display:flex; gap:6px; flex-wrap:wrap }
+  .mut { color:var(--mut) } .offs label { display:inline-flex; gap:4px; align-items:center; margin-right:10px; color:var(--fg); font-size:13px }
+  .offs input { width:auto }
+  #qr img { width:260px; background:#fff; padding:8px; border-radius:8px }
+  .scroll { overflow-x:auto }
+</style>
+</head>
+<body>
+<header>
+  <h1>💬 CobrançaCRTV</h1>
+  <span id="wa" class="pill">WhatsApp…</span>
+  <nav>
+    <button data-t="cobrancas" class="on">Cobranças</button>
+    <button data-t="clientes">Clientes</button>
+    <button data-t="historico">Histórico</button>
+    <button data-t="config">Configurações</button>
+    <button onclick="api('POST','/logout').then(()=>location.href='/login')">Sair</button>
+  </nav>
+</header>
+<main>
+  <section id="cobrancas" class="on">
+    <div class="card">
+      <form id="fCharge" class="grid">
+        <input type="hidden" name="id">
+        <div><label>Cliente</label><select name="client_id" required></select></div>
+        <div><label>Descrição</label><input name="description" placeholder="Mensalidade" required></div>
+        <div><label>Valor (R$)</label><input name="amount" inputmode="numeric" placeholder="0,00" autocomplete="off" required></div>
+        <div><label>Vencimento</label><input name="due_date" type="date" required></div>
+        <div class="offs"><label>Avisar antes</label>
+          <label><input type="checkbox" name="o" value="10" checked>10d</label>
+          <label><input type="checkbox" name="o" value="5" checked>5d</label>
+          <label><input type="checkbox" name="o" value="1" checked>1d</label>
+          <label><input type="checkbox" name="o" value="0">no dia</label>
+        </div>
+        <div class="offs"><label>&nbsp;</label><label><input type="checkbox" name="recurring" checked>Mensal</label></div>
+        <div class="row"><button class="btn">Salvar</button><button type="button" class="btn ghost" onclick="resetCharge()">Limpar</button></div>
+      </form>
+    </div>
+    <div class="card scroll">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <b>Cobranças</b>
+        <div class="row"><button class="btn ghost sm" onclick="run(true)">Simular hoje</button><button class="btn sm" onclick="run(false)">Disparar lembretes de hoje</button></div>
+      </div>
+      <table><thead><tr><th>Cliente</th><th>Descrição</th><th>Valor</th><th>Vence</th><th>Avisos</th><th>Último envio</th><th></th></tr></thead><tbody id="tCharges"></tbody></table>
+    </div>
+  </section>
+
+  <section id="clientes">
+    <div class="card">
+      <form id="fClient" class="grid">
+        <input type="hidden" name="id">
+        <div><label>Nome</label><input name="name" required></div>
+        <div><label>WhatsApp (DDD + número, ou +país)</label><input name="phone" placeholder="11 99999-9999 ou +351 912 345 678" required></div>
+        <div><label>…ou um grupo</label><select id="groupSel"><option value="">Carregar grupos…</option></select></div>
+        <div><label>Obs.</label><input name="notes"></div>
+        <div class="row"><button class="btn">Salvar</button><button type="button" class="btn ghost" onclick="fClient.reset();fClient.id.value=''">Limpar</button></div>
+      </form>
+    </div>
+    <div class="card scroll"><table><thead><tr><th>Nome</th><th>WhatsApp</th><th>Obs.</th><th></th></tr></thead><tbody id="tClients"></tbody></table></div>
+  </section>
+
+  <section id="historico">
+    <div class="card scroll"><table><thead><tr><th>Quando</th><th>Cliente</th><th>Cobrança</th><th>Vencimento</th><th>Aviso</th><th>Status</th></tr></thead><tbody id="tLog"></tbody></table></div>
+  </section>
+
+  <section id="config">
+    <div class="card">
+      <b>WhatsApp</b>
+      <p class="mut">Conecte o número que vai enviar as cobranças: WhatsApp &gt; Aparelhos conectados &gt; Conectar aparelho.</p>
+      <div class="row"><button class="btn" onclick="connect()">Gerar QR code</button><button class="btn ghost" onclick="logoutWa()">Desconectar</button></div>
+      <div id="qr" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <form id="fSettings" class="grid" style="grid-template-columns:1fr 1fr 120px">
+        <div><label>Chave Pix</label><input name="pix_key"></div>
+        <div><label>Favorecido</label><input name="pix_name"></div>
+        <div><label>Hora do envio</label><input name="send_hour" type="number" min="0" max="23"></div>
+        <div style="grid-column:1/-1"><label>Modo de envio</label><select name="auto_send">
+          <option value="0">Manual — só envia quando eu clicar</option>
+          <option value="1">Automático — envia sozinho na hora configurada</option>
+        </select></div>
+        <div style="grid-column:1/-1"><label>Mensagem antes do vencimento — variáveis: {nome} {nome_completo} {descricao} {valor} {vencimento} {dias} {pix} {favorecido}</label><textarea name="template"></textarea></div>
+        <div style="grid-column:1/-1"><label>Avisar atraso depois de (dias, separados por vírgula — vazio desliga)</label><input name="overdue_days" placeholder="1,3,7"></div>
+        <div style="grid-column:1/-1"><label>Mensagem de atraso — mesmas variáveis, {dias} vira "há 3 dias" e {atraso} o número de dias</label><textarea name="overdue_template"></textarea></div>
+        <div><button class="btn">Salvar configurações</button></div>
+      </form>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const api = async (m, p, b) => {
+  const r = await fetch('/api' + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  if (r.status === 401) { location.href = '/login'; throw new Error('sessão'); }
+  const j = await r.json(); if (!r.ok) { alert(j.error || 'Erro'); throw j; } return j;
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const brDate = (s) => s ? s.slice(0, 10).split('-').reverse().join('/') + (s.length > 10 ? s.slice(10, 16) : '') : '—';
+let clients = [], charges = [];
+
+// Grupos do WhatsApp conectado: carrega ao abrir a lista, escolher preenche o cliente
+let groupsLoaded = false;
+groupSel.addEventListener('focus', async () => {
+  if (groupsLoaded) return;
+  groupSel.innerHTML = '<option value="">Carregando…</option>';
+  try {
+    const gs = await api('GET', '/whatsapp/groups');
+    groupSel.innerHTML = '<option value="">— escolher grupo —</option>' + gs.map((g) => `<option value="${esc(g.id)}">${esc(g.name)}${g.size ? ` (${g.size})` : ''}</option>`).join('');
+    groupsLoaded = true;
+  } catch { groupSel.innerHTML = '<option value="">Conecte o WhatsApp primeiro</option>'; }
+});
+groupSel.addEventListener('change', () => {
+  const o = groupSel.selectedOptions[0];
+  if (!groupSel.value) return;
+  fClient.phone.value = groupSel.value;
+  if (!fClient.name.value) fClient.name.value = o.textContent.replace(/ \(\d+\)$/, '');
+});
+
+// Valor digitado como no banco: 15000 vira 150,00
+const fmtMoney = (cents) => (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+fCharge.amount.addEventListener('input', (e) => {
+  const cents = Number(e.target.value.replace(/\D/g, '').slice(0, 11)) || 0;
+  e.target.value = cents ? fmtMoney(cents) : '';
+});
+
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('nav button, section').forEach((e) => e.classList.remove('on'));
+  b.classList.add('on'); $('#' + b.dataset.t).classList.add('on');
+  if (b.dataset.t === 'historico') loadLog();
+});
+
+async function loadClients() {
+  clients = await api('GET', '/clients');
+  $('#tClients').innerHTML = clients.map((c) => `<tr><td>${esc(c.name)}</td><td>${/@g\.us$/.test(c.phone) ? '<span class="pill">grupo</span>' : esc(c.phone)}</td><td class="mut">${esc(c.notes)}</td>
+    <td class="row"><button class="btn ghost sm" onclick="editClient(${c.id})">Editar</button><button class="btn ghost sm" onclick="delClient(${c.id})">Excluir</button></td></tr>`).join('') || '<tr><td colspan=4 class="mut">Nenhum cliente</td></tr>';
+  fCharge.client_id.innerHTML = clients.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+}
+function editClient(id) { const c = clients.find((x) => x.id === id); for (const k of ['id', 'name', 'phone', 'notes']) fClient[k].value = c[k] ?? ''; }
+async function delClient(id) { if (confirm('Excluir cliente e as cobranças dele?')) { await api('DELETE', '/clients/' + id); loadAll(); } }
+fClient.onsubmit = async (e) => {
+  e.preventDefault(); const d = Object.fromEntries(new FormData(fClient));
+  await api(d.id ? 'PUT' : 'POST', '/clients' + (d.id ? '/' + d.id : ''), d); fClient.reset(); fClient.id.value = ''; loadAll();
+};
+
+async function loadCharges() {
+  charges = await api('GET', '/charges');
+  $('#tCharges').innerHTML = charges.map((c) => {
+    const cls = !c.active ? '' : c.days < 0 ? 'err' : c.days <= 5 ? 'warn' : 'ok';
+    const when = !c.active ? 'inativa' : c.days < 0 ? `atrasada ${-c.days}d` : c.days === 0 ? 'hoje' : `em ${c.days}d`;
+    return `<tr><td>${esc(c.name)}</td><td>${esc(c.description)}${c.recurring ? ' <span class="pill">mensal</span>' : ''}</td><td>${brl(c.amount)}</td>
+    <td>${brDate(c.due_date)} <span class="pill ${cls}">${when}</span></td><td class="mut">${c.offsets.split(',').map((o) => o === '0' ? 'dia' : o + 'd').join(', ')}</td>
+    <td class="mut">${brDate(c.last_sent)}</td>
+    <td class="row"><button class="btn sm" onclick="paid(${c.id})">Pago</button><button class="btn ghost sm" onclick="sendNow(${c.id})">Enviar agora</button>
+    <button class="btn ghost sm" onclick="editCharge(${c.id})">Editar</button><button class="btn ghost sm" onclick="delCharge(${c.id})">Excluir</button></td></tr>`;
+  }).join('') || '<tr><td colspan=7 class="mut">Nenhuma cobrança</td></tr>';
+}
+function resetCharge() { fCharge.reset(); fCharge.id.value = ''; }
+function editCharge(id) {
+  const c = charges.find((x) => x.id === id);
+  for (const k of ['id', 'client_id', 'description', 'due_date']) fCharge[k].value = c[k];
+  fCharge.amount.value = fmtMoney(Math.round(c.amount * 100));
+  fCharge.recurring.checked = !!c.recurring;
+  const o = c.offsets.split(','); fCharge.querySelectorAll('[name=o]').forEach((cb) => cb.checked = o.includes(cb.value));
+  scrollTo(0, 0);
+}
+async function delCharge(id) { if (confirm('Excluir cobrança?')) { await api('DELETE', '/charges/' + id); loadCharges(); } }
+async function paid(id) { if (confirm('Marcar como paga? Mensal avança p/ próximo mês.')) { await api('POST', `/charges/${id}/paid`); loadCharges(); } }
+async function sendNow(id) {
+  const { text } = await api('GET', `/charges/${id}/preview`);
+  if (confirm('Enviar agora?\n\n' + text)) { await api('POST', `/charges/${id}/send`); alert('Enviado'); }
+}
+fCharge.onsubmit = async (e) => {
+  e.preventDefault(); const f = fCharge;
+  const d = { client_id: f.client_id.value, description: f.description.value, amount: Number(f.amount.value.replace(/\D/g, '')) / 100, due_date: f.due_date.value,
+    recurring: f.recurring.checked, offsets: [...f.querySelectorAll('[name=o]:checked')].map((c) => c.value).join(',') };
+  await api(f.id.value ? 'PUT' : 'POST', '/charges' + (f.id.value ? '/' + f.id.value : ''), d); resetCharge(); loadCharges();
+};
+async function run(dryRun) {
+  if (!dryRun && !confirm('Disparar agora os lembretes devidos hoje?')) return;
+  const r = await api('POST', '/run', { dryRun });
+  alert(r.length ? r.map((x) => `${x.name} (${x.days}d): ${x.status || '\n' + x.text}`).join('\n\n') : 'Nenhum lembrete devido hoje.');
+  loadCharges();
+}
+
+async function loadLog() {
+  const l = await api('GET', '/log');
+  $('#tLog').innerHTML = l.map((s) => `<tr><td>${brDate(s.sent_at)}</td><td>${esc(s.name)}</td><td>${esc(s.description)}</td><td>${brDate(s.due_date)}</td>
+    <td>${s.offset_days < 0 ? `${-s.offset_days}d de atraso` : `${s.offset_days}d antes`}</td><td><span class="pill ${s.status === 'sent' ? 'ok' : 'err'}" title="${esc(s.error)}">${s.status === 'sent' ? 'enviado' : 'erro'}</span></td></tr>`).join('') || '<tr><td colspan=6 class="mut">Nada ainda</td></tr>';
+}
+
+async function loadSettings() { const s = await api('GET', '/settings'); for (const k in s) if (fSettings[k]) fSettings[k].value = s[k]; }
+fSettings.onsubmit = async (e) => { e.preventDefault(); await api('PUT', '/settings', Object.fromEntries(new FormData(fSettings))); alert('Salvo'); };
+
+async function waStatus() {
+  const { state } = await api('GET', '/whatsapp/status').catch(() => ({ state: 'offline' }));
+  const map = { open: ['ok', 'WhatsApp conectado'], connecting: ['warn', 'Aguardando QR'], close: ['err', 'WhatsApp desconectado'], not_created: ['err', 'WhatsApp não configurado'], offline: ['err', 'Evolution API offline'] };
+  const [c, t] = map[state] || ['', state]; $('#wa').className = 'pill ' + c; $('#wa').textContent = t;
+  if (state === 'open') $('#qr').innerHTML = '';
+}
+async function connect() {
+  const r = await api('POST', '/whatsapp/connect');
+  $('#qr').innerHTML = r.base64 ? `<img src="${r.base64}">` : '<span class="mut">Já conectado ou QR indisponível — tente de novo.</span>';
+}
+async function logoutWa() { if (confirm('Desconectar WhatsApp?')) { await api('POST', '/whatsapp/logout'); waStatus(); } }
+
+async function loadAll() { await loadClients(); await loadCharges(); }
+loadAll(); loadSettings(); waStatus(); setInterval(waStatus, 5000);
+</script>
+</body>
+</html>
