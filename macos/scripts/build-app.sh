@@ -9,6 +9,7 @@ APP=${APP:-build/CobrancaCRTV.app}
 VERSION=1.0.0
 BUILD_NUMBER=1
 INSTALL=0
+PROJECT_DIR=$(cd .. && pwd)
 for arg in "$@"; do
   case "$arg" in
     --install) INSTALL=1 ;;
@@ -52,6 +53,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.business</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CRTVProjectDir</key><string>${PROJECT_DIR}</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSAppTransportSecurity</key>
   <dict><key>NSAllowsLocalNetworking</key><true/></dict>

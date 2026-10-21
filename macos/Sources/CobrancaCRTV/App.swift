@@ -3,7 +3,9 @@ import WebKit
 
 // Painel roda no Docker local; o app só garante que ele está de pé e o exibe.
 let panelURL = URL(string: "http://localhost:3010/")!
-let projectDir = NSString(string: "~/Claude/CobrancaCRTV").expandingTildeInPath
+// Pasta do projeto (com docker-compose.yml), gravada no Info.plist pelo build-app.sh.
+let projectDir = Bundle.main.object(forInfoDictionaryKey: "CRTVProjectDir") as? String
+    ?? NSString(string: "~/Claude/CobrancaCRTV").expandingTildeInPath
 
 @main
 struct CobrancaCRTVApp: App {
